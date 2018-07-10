@@ -19,7 +19,7 @@ sailsLogLevels = {
 
 var postToLogstash = function (data, callback) {
 	request({
-		url: logstash_http_endpoint,
+		url: 'http://' + logstash_http_endpoint + ':12345',
 		method: 'POST',
 		body: data,
 		json: true
