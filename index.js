@@ -87,11 +87,11 @@ module.exports = {
 			if (!token) return next();
 
 			require("jsonwebtoken").verify(token, secret, function (err, decoded) {
-				if (err) {
-					return next();
-				}
 				// set user
-				req.user = decoded
+				if (decoded) {
+					req.isTokenVerified = true;
+					req.user = decoded;
+				}
 				return next();
 			});
 		}
