@@ -20,11 +20,11 @@
     "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.10",
     "request": "^2.87.0",
-    "winston": "^2.4.1"
-  },
-  "devDependencies": {
+    "winston": "^2.4.1",
     "commander": "^2.19.0",
     "inquirer": "^6.2.0",
     "cpx": "^1.5.0"
+  },
+  "devDependencies": {
   }
 }
