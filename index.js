@@ -97,6 +97,27 @@ module.exports = {
 		}
 	},
 
+	sanitizeHTML: function(req,res,next){
+		var sanitize=require('sanitize-html');
+		var sanitizeObject=function(ob){
+			Object.keys(ob).forEach(function(key){
+				if(typeof ob[key]=='object')
+					sanitizeObject(ob[key]);
+				else if(typeof ob[key]=='string')
+					ob[key]=sanitize(ob[key]);
+			});
+		}
+		if(req.body){
+			// console.log(typeof req.body);
+			sanitizeObject(req.body);
+			// console.log('inside sanitizeHTML');
+			// console.log(req.body);
+			next(null);
+		}else{
+			next(null);
+		}
+
+	},
 	//related to sails logger
 	getLogger: logger.getLogger
 }
