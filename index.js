@@ -101,9 +101,9 @@ module.exports = {
 		var sanitize=require('sanitize-html');
 		var sanitizeObject=function(ob){
 			Object.keys(ob).forEach(function(key){
-				if(typeof ob[key]=='object')
+				if(_.isObject(ob[key]))
 					sanitizeObject(ob[key]);
-				else if(typeof ob[key]=='string')
+				else if(_.isString(ob[key]))
 					ob[key]=sanitize(ob[key]);
 			});
 		}
