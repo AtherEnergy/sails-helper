@@ -78,7 +78,7 @@ logstashErrorTransporter.prototype.log = function (level, msg, meta, callback) {
 	delete output.trace;
 	//ADD env and service
 	output.env = process.env.NODE_ENV
-	output.service = process.env.SERVICE
+	output.service = process.env.MICRO_SERVICE
 	// after processing the log push to logstash
 	postToLogstash(output, callback);
 };
