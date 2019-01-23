@@ -1,6 +1,6 @@
 ### sails-helper
 
-### usaga
+### usage
 ```
 npm install sails-helper
 ```
