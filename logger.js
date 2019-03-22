@@ -89,14 +89,17 @@ module.exports = {
 	winston: winston,
 
 	// need to call this function for creating a new winston logger instance
-	getLogger: function () {
+	getLogger: function (logLevel) {
+
+		var sentLogLevel  = logLevel ? logLevel: 'info';
+
 		var logger = new winston.Logger({
 			levels: sailsLogLevels,
 			exitOnError: false,
 			transports: [
 				new (winston.transports.Console)({
-					name: 'info',
-					level: 'info',
+					name: sentLogLevel,
+					level: sentLogLevel,
 					colorize: false,
 					handleExceptions: true,
 					humanReadableUnhandledException: true,
