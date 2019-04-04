@@ -2,66 +2,116 @@ var logger = require('./logger');
 var _ = require('lodash');
 var moment = require('moment');
 
-
 module.exports = {
-	requestLogger: function (req, res, next) {
-		// to ignore - req.url starting with /styles,/js,/semantic,/favicon.ico,/health
-		var patt = new RegExp("^\/(js|semantic|styles|favicon|health)");
-		if (!patt.test(req.url)) {
-			var log = {
-				app_env: process.env.NODE_ENV,
-				status: 'REQUESTED',
-				req_method: req.method,
-				req_url: req.url,
-				req_body: req.body ? _.cloneDeep(req.body) : {},
-				req_query: req.query ? req.query : {},
-				req_protocol: req.protocol,
-				req_host: req.host,
-				req_ip: req.ip,
-
-				req_headers: _.cloneDeep(req.headers),
-
-				req_route_path: (req.route) ? req.route.path : null,
-
-				// user info
-				req_user_id: (req.user) ? req.user.id : null,
-				req_user_username: (req.user) ? req.user.username : null,
-				req_user_details: (req.user) ? req.user : null,
-				req_sessionID: req.sessionID,
-			};
-
-			// remove sensitive information
-			if (log.req_headers.authorization)
-				delete log.req_headers.authorization
-
-			if (log.req_body.password)
-				delete log.req_body.password
-
-
-			// for Machine to Machine communication, capture jwt token's decoded data
-			if (req.machine && req.machine.machine_name) log.req_machine_name = req.machine.machine_name;
-
-			req._sails.log.info(JSON.stringify(log));
-
-			res.on('finish', function () {
-				log.status = 'RESPONDED';
-				log.res_status_code = res.statusCode.toString();
-				log.res_status_message = res.statusMessage
-				log.res_time = (new Date()) - req._startTime;
-				log.res_meta = (res.meta) ? res.meta : {};
-				req._sails.log.info(JSON.stringify(log));
-			});
-			//To handle the timeout scenarios
-			res.on('close', function () {
-				log.status = 'CLOSED';
-				log.res_status_code = res.statusCode.toString();
-				log.res_status_message = res.statusMessage
-				log.res_time = (new Date()) - req._startTime;
-				log.res_meta = (res.meta) ? res.meta : {};
-				req._sails.log.info(JSON.stringify(log));
+	/**
+	 * config Object
+	 * example:
+	 * {
+	 * 	kinesis: {
+	 * 		enabled: true,
+	 * 		PartitionKey: 'my_micro_service',
+	 * 		StreamName: 'my_kinesis_stream',
+	 * 		aws:{
+	 * 			accessKeyId: accessKeyId,
+	 * 			secretAccessKey: secretAccessKey,
+	 * 			region: region
+	 * 		}
+	 * 	}
+	 * }
+	 */
+	requestLogger: function (config) {
+		var kinesis;
+		if (_.get(config, 'kinesis.enabled', false)) {
+			var AWS = require('aws-sdk');
+			var kinesis = new AWS.Kinesis({
+				accessKeyId: _.get(config, 'kinesis.aws.accessKeyId'),
+				secretAccessKey: _.get(config, 'kinesis.aws.secretAccessKey'),
+				region: _.get(config, 'kinesis.aws.region')
 			});
 		}
-		return next();
+
+		function kinesisPutRecord(log, sails) {
+			if (_.get(config, 'kinesis.enabled', false)) {
+				log.timestamp = new Date();
+				kinesis.putRecord({
+					Data: JSON.stringify(log),
+					PartitionKey: _.get(config, 'kinesis.PartitionKey'),
+					StreamName: _.get(config, 'kinesis.StreamName')
+				}, function (err, data) {
+					if (err) {
+						sails.log.error(err);
+					}
+				});
+			}
+		}
+
+		return function (req, res, next) {
+			// to ignore - req.url starting with /styles,/js,/semantic,/favicon.ico,/health
+			var patt = new RegExp("^\/(js|semantic|styles|favicon|health)");
+			if (!patt.test(req.url)) {
+				var log = {
+					app_env: process.env.NODE_ENV,
+					status: 'REQUESTED',
+					req_method: req.method,
+					req_url: req.url,
+					req_body: req.body ? _.cloneDeep(req.body) : {},
+					req_query: req.query ? req.query : {},
+					req_protocol: req.protocol,
+					req_host: req.host,
+					req_ip: req.ip,
+
+					req_headers: _.cloneDeep(req.headers),
+
+					req_route_path: (req.route) ? req.route.path : null,
+
+					// user info
+					req_user_id: (req.user) ? req.user.id : null,
+					req_user_username: (req.user) ? req.user.username : null,
+					req_user_details: (req.user) ? req.user : null,
+					req_sessionID: req.sessionID,
+				};
+
+				// remove sensitive information
+				if (log.req_headers.authorization)
+					delete log.req_headers.authorization
+
+				if (log.req_body.password)
+					delete log.req_body.password
+
+
+				// for Machine to Machine communication, capture jwt token's decoded data
+				if (req.machine && req.machine.machine_name) log.req_machine_name = req.machine.machine_name;
+
+				req._sails.log.info(JSON.stringify(log));
+				// send to kinesis stream
+				kinesisPutRecord(log, req._sails);
+
+				res.on('finish', function () {
+					log.status = 'RESPONDED';
+					log.res_status_code = res.statusCode.toString();
+					log.res_status_message = res.statusMessage
+					log.res_time = (new Date()) - req._startTime;
+					log.res_meta = (res.meta) ? res.meta : {};
+					req._sails.log.info(JSON.stringify(log));
+
+					// send to kinesis stream
+					kinesisPutRecord(log, req._sails);
+				});
+				//To handle the timeout scenarios
+				res.on('close', function () {
+					log.status = 'CLOSED';
+					log.res_status_code = res.statusCode.toString();
+					log.res_status_message = res.statusMessage
+					log.res_time = (new Date()) - req._startTime;
+					log.res_meta = (res.meta) ? res.meta : {};
+					req._sails.log.info(JSON.stringify(log));
+
+					// send to kinesis stream
+					kinesisPutRecord(log, req._sails);
+				});
+			}
+			return next();
+		}
 	},
 
 	startRequestTimer: function startRequestTimer(req, res, next) {
