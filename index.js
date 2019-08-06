@@ -68,7 +68,7 @@ module.exports = {
 					req_user_id: (req.user) ? req.user.id : null,
 					req_user_username: (req.user) ? req.user.username : null,
 					req_user_details: (req.user) ? req.user : null,
-					req_sessionID: req.sessionID,
+					req_session_id: req.sessionID,
 				};
 
 				// remove sensitive information
