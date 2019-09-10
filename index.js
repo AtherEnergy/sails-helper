@@ -47,7 +47,7 @@ module.exports = {
 
 		return function (req, res, next) {
 			// to ignore - req.url starting with /styles,/js,/semantic,/favicon.ico,/health
-			var patt = new RegExp("^\/(js|semantic|styles|favicon|health)");
+			var patt = new RegExp("^\/(js|semantic|styles|favicon|health|css|min|fonts|image)");
 			if (!patt.test(req.url)) {
 				var log = {
 					app_env: process.env.NODE_ENV,
