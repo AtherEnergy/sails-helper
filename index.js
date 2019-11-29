@@ -82,6 +82,8 @@ module.exports = {
 				// for Machine to Machine communication, capture jwt token's decoded data
 				if (req.machine && req.machine.machine_name) log.req_machine_name = req.machine.machine_name;
 
+				if(log.req_body) log.req_body = JSON.stringify(log.req_body);
+				
 				req._sails.log.info(JSON.stringify(log));
 				// send to kinesis stream
 				kinesisPutRecord(log, req._sails);
