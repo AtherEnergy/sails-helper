@@ -57,7 +57,7 @@ module.exports = {
 					req_body: req.body ? _.cloneDeep(req.body) : {},
 					req_query: req.query ? req.query : {},
 					req_protocol: req.protocol,
-					req_host: req.host,
+					req_host: req.hostname,
 					req_ip: req.ip,
 
 					req_headers: _.cloneDeep(req.headers),
