@@ -7,6 +7,12 @@ npm install sails-helper
 
 ###changelog v2:
 
+2.1 - formatNumber added
+This can be used to format large numbers into a format that is super easy for humans to read. 
+For eg 
+- 10000 can be 10,000 or 10k 
+- 1000000 can be 1M or 10 lakhs
+
 #### breaking changes
 requestLogger requires a config object as argument.
 
