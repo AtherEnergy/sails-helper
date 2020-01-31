@@ -5,7 +5,12 @@
 npm install sails-helper
 ```
 
-###changelog v2:
+### change v3
+- cleanup logging
+- move kinesis setup to business-stack-generator
+
+
+### changelog v2:
 
 2.1 - formatNumber added
 This can be used to format large numbers into a format that is super easy for humans to read. 

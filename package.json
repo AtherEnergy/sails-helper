@@ -1,6 +1,6 @@
 {
   "name": "sails-helper",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "sails helper and middleware functions",
   "main": "index.js",
   "scripts": {
@@ -25,8 +25,7 @@
     "ratelimiter": "^3.3.0",
     "redis": "^2.8.0",
     "request": "^2.88.0",
-    "sanitize-html": "^1.20.1",
-    "winston": "^2.4.1"
+    "sanitize-html": "^1.20.1"
   },
   "devDependencies": {}
 }

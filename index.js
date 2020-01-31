@@ -3,117 +3,67 @@ var _ = require('lodash');
 var moment = require('moment');
 
 module.exports = {
-	/**
-	 * config Object
-	 * example:
-	 * {
-	 * 	kinesis: {
-	 * 		enabled: true,
-	 * 		PartitionKey: 'my_micro_service',
-	 * 		StreamName: 'my_kinesis_stream',
-	 * 		aws:{
-	 * 			accessKeyId: accessKeyId,
-	 * 			secretAccessKey: secretAccessKey,
-	 * 			region: region
-	 * 		}
-	 * 	}
-	 * }
-	 */
-	requestLogger: function (config) {
-		var kinesis;
-		if (_.get(config, 'kinesis.enabled', false)) {
-			var AWS = require('aws-sdk');
-			var kinesis = new AWS.Kinesis({
-				accessKeyId: _.get(config, 'kinesis.aws.accessKeyId'),
-				secretAccessKey: _.get(config, 'kinesis.aws.secretAccessKey'),
-				region: _.get(config, 'kinesis.aws.region')
+
+	requestLogger: function (req, res, next) {
+		// to ignore - req.url starting with /styles,/js,/semantic,/favicon.ico,/health
+		var patt = new RegExp("^\/(js|semantic|styles|favicon|health|css|min|fonts|image)");
+		if (!patt.test(req.url)) {
+			var log = {
+				timestamp: new Date(),
+				app_env: process.env.NODE_ENV,
+				status: 'REQUESTED',
+				req_method: req.method,
+				req_url: req.url,
+				req_body: req.body ? _.cloneDeep(req.body) : {},
+				req_query: req.query ? req.query : {},
+				req_protocol: req.protocol,
+				req_host: req.hostname,
+				req_ip: req.ip,
+
+				req_headers: _.cloneDeep(req.headers),
+
+				req_route_path: (req.route) ? req.route.path : null,
+
+				// user info
+				req_user_id: (req.user) ? req.user.id : null,
+				req_user_username: (req.user) ? req.user.username : null,
+				req_user_details: (req.user) ? req.user : null,
+				req_session_id: req.sessionID,
+			};
+
+			// remove sensitive information
+			if (log.req_headers.authorization)
+				delete log.req_headers.authorization
+
+			if (log.req_body.password)
+				delete log.req_body.password
+
+			if (log.req_body) log.req_body = JSON.stringify(log.req_body);
+
+			req._sails.log.info(JSON.stringify(log));
+
+			res.on('finish', function () {
+				log.status = 'RESPONDED';
+				log.timestamp = new Date();
+				log.res_status_code = res.statusCode.toString();
+				log.res_status_message = res.statusMessage
+				log.res_time = (new Date()) - req._startTime;
+				log.res_meta = (res.meta) ? res.meta : {};
+				req._sails.log.info(JSON.stringify(log));
+			});
+
+			//To handle the timeout scenarios
+			res.on('close', function () {
+				log.status = 'CLOSED';
+				log.timestamp = new Date();
+				log.res_status_code = res.statusCode.toString();
+				log.res_status_message = res.statusMessage
+				log.res_time = (new Date()) - req._startTime;
+				log.res_meta = (res.meta) ? res.meta : {};
+				req._sails.log.info(JSON.stringify(log));
 			});
 		}
-
-		function kinesisPutRecord(log, sails) {
-			if (_.get(config, 'kinesis.enabled', false)) {
-				log.timestamp = new Date();
-				kinesis.putRecord({
-					Data: JSON.stringify(log),
-					PartitionKey: _.get(config, 'kinesis.PartitionKey'),
-					StreamName: _.get(config, 'kinesis.StreamName')
-				}, function (err, data) {
-					if (err) {
-						sails.log.error(err);
-					}
-				});
-			}
-		}
-
-		return function (req, res, next) {
-			// to ignore - req.url starting with /styles,/js,/semantic,/favicon.ico,/health
-			var patt = new RegExp("^\/(js|semantic|styles|favicon|health|css|min|fonts|image)");
-			if (!patt.test(req.url)) {
-				var log = {
-					app_env: process.env.NODE_ENV,
-					status: 'REQUESTED',
-					req_method: req.method,
-					req_url: req.url,
-					req_body: req.body ? _.cloneDeep(req.body) : {},
-					req_query: req.query ? req.query : {},
-					req_protocol: req.protocol,
-					req_host: req.hostname,
-					req_ip: req.ip,
-
-					req_headers: _.cloneDeep(req.headers),
-
-					req_route_path: (req.route) ? req.route.path : null,
-
-					// user info
-					req_user_id: (req.user) ? req.user.id : null,
-					req_user_username: (req.user) ? req.user.username : null,
-					req_user_details: (req.user) ? req.user : null,
-					req_session_id: req.sessionID,
-				};
-
-				// remove sensitive information
-				if (log.req_headers.authorization)
-					delete log.req_headers.authorization
-
-				if (log.req_body.password)
-					delete log.req_body.password
-
-
-				// for Machine to Machine communication, capture jwt token's decoded data
-				if (req.machine && req.machine.machine_name) log.req_machine_name = req.machine.machine_name;
-
-				if(log.req_body) log.req_body = JSON.stringify(log.req_body);
-				
-				req._sails.log.info(JSON.stringify(log));
-				// send to kinesis stream
-				kinesisPutRecord(log, req._sails);
-
-				res.on('finish', function () {
-					log.status = 'RESPONDED';
-					log.res_status_code = res.statusCode.toString();
-					log.res_status_message = res.statusMessage
-					log.res_time = (new Date()) - req._startTime;
-					log.res_meta = (res.meta) ? res.meta : {};
-					req._sails.log.info(JSON.stringify(log));
-
-					// send to kinesis stream
-					kinesisPutRecord(log, req._sails);
-				});
-				//To handle the timeout scenarios
-				res.on('close', function () {
-					log.status = 'CLOSED';
-					log.res_status_code = res.statusCode.toString();
-					log.res_status_message = res.statusMessage
-					log.res_time = (new Date()) - req._startTime;
-					log.res_meta = (res.meta) ? res.meta : {};
-					req._sails.log.info(JSON.stringify(log));
-
-					// send to kinesis stream
-					kinesisPutRecord(log, req._sails);
-				});
-			}
-			return next();
-		}
+		return next();
 	},
 
 	startRequestTimer: function startRequestTimer(req, res, next) {
@@ -206,75 +156,5 @@ module.exports = {
 				res.status(429).json({ satus: 'error', message: 'Rate limit exceeded, retry ' + moment(new Date(limit.reset * 1000)).fromNow() });
 			});
 		}
-	},
-
-	/**
-	* number - the number to be formatted
-	* number_format - what format do you want the number to be formatted in. 
-	* precision - if the number has decimals, then what precision do you want to show
-	* 
-	* egs of number format 
-	* - indian_thousand
-	* - indian_lakh
-	* - indian_crore
-	* - us_thousand
-	* - us_million
-	* - us_billion
-	* 
-	* precision - takes in any integer. Most commonly used - 1 or 2
-	*/
-	formatNumber: function (number, number_format, precision) {
-        if (!number) return '';
-        precision = precision ? precision : 'decimal1';
-        number_format = number_format ? number_format : 'indian';
-        var p = parseInt(precision.substring(7, 8)) ? parseInt(precision.substring(7, 8)) : 2;
-        var locale;
-        var format_symbol;
-        if (number_format.startsWith('indian')) {
-            var format = number_format.substring(7)
-            locale = 'en-IN';
-            switch (format) {
-                case 'thousand':
-                    number = number / 1000;
-                    format_symbol = 'k';
-                    break;
-                case 'lakh':
-                    number = number / 100000;
-                    format_symbol = 'l';
-                    break;
-                case 'crore':
-                    number = number / 10000000;
-                    format_symbol = 'cr';
-                    break;
-                default:
-                    format_symbol = ''
-                    break;
-            };
-        }
-        else if (number_format.startsWith('us')) {
-            var format = number_format.substring(3);
-            locale = 'en-US';
-            switch (format) {
-                case 'thousand':
-                    number = number / 1000;
-                    format_symbol = 'k';
-                    break;
-                case 'million':
-                    number = number / 1000000;
-                    format_symbol = 'm';
-                    break;
-                case 'billion':
-                    number = number / 1000000000;
-                    format_symbol = 'b';
-                    break;
-                default:
-                    format_symbol = ''
-                    break;
-            };
-        }
-        else {
-            locale = 'en-IN';
-        }
-        return number.toLocaleString(locale, {maximumFractionDigits: p}) + format_symbol
-    }
+	}
 }
