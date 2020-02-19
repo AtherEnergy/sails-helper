@@ -9,7 +9,6 @@ module.exports = {
 		var patt = new RegExp("^\/(js|semantic|styles|favicon|health|css|min|fonts|image)");
 		if (!patt.test(req.url)) {
 			var log = {
-				timestamp: new Date(),
 				app_env: process.env.NODE_ENV,
 				status: 'REQUESTED',
 				req_method: req.method,
@@ -44,7 +43,6 @@ module.exports = {
 
 			res.on('finish', function () {
 				log.status = 'RESPONDED';
-				log.timestamp = new Date();
 				log.res_status_code = res.statusCode.toString();
 				log.res_status_message = res.statusMessage
 				log.res_time = (new Date()) - req._startTime;
@@ -55,7 +53,6 @@ module.exports = {
 			//To handle the timeout scenarios
 			res.on('close', function () {
 				log.status = 'CLOSED';
-				log.timestamp = new Date();
 				log.res_status_code = res.statusCode.toString();
 				log.res_status_message = res.statusMessage
 				log.res_time = (new Date()) - req._startTime;
