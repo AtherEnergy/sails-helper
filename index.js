@@ -1,3 +1,4 @@
+var logger = require('./logger');
 var _ = require('lodash');
 var moment = require('moment');
 
@@ -120,6 +121,8 @@ module.exports = {
 		}
 
 	},
+
+	getLogger: logger.getLogger,
 
 	rateLimit: function (redis_host) {
 		const ratelimiter = require('ratelimiter');
