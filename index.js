@@ -2,6 +2,8 @@ var logger = require('./logger');
 var _ = require('lodash');
 var moment = require('moment');
 
+// default limits on the ratelimiter
+// key should be a valid http verb in capitals
 var defaultLimits = {
 	'GET': {
 		max: 15,
@@ -135,7 +137,7 @@ module.exports = {
 	rateLimit: function (redis_host, passedLimits = {}) {
 		const ratelimiter = require('ratelimiter');
 		var redis_db = require('redis').createClient({ host: redis_host });
-		return function (req, res, next) { 	// for the time being removing GET requests form rate limiting. TODO: for GET request limiting parameter would be more linient
+		return function (req, res, next) {
 			// if (req.method == 'GET')
 			// 	return next();
 
@@ -147,13 +149,19 @@ module.exports = {
 			// if defined already, well and good; if not then use the default '*' limits
 			var method = ( _.get(defaultLimits, req.method, false) ) ? req.method : '*';
 			
+			// Default Rate limit is set here
 			var definedLimits = _.get(defaultLimits, method, false);
-			passedLimits.map( passedLimit, key => definedLimits[key] = passedLimit);
+
+			// Default limit is overwritten by Limit argument in the function itself
+			//passedLimits.map( (passedLimit, key) => definedLimits[key] = passedLimit);
+			Object.keys(passedLimits).forEach(function(key, index) {
+				definedLimits[key] = _.get(passedLimits, key, definedLimits[key]);
+			});
 
 			// req.ip gives you the true proxied ip. id is combination of ip and req path
 			var id = req.ip + '_' + req.path;
 			// 15 requests are allowed in 2 minute.
-			var limit = new ratelimiter({ id: id, db: redis_db, definedLimits.max: 15, definedLimits.duration: 120000 });
+			var limit = new ratelimiter({ id: id, db: redis_db, max: definedLimits.max, duration: definedLimits.duration });
 			limit.get(function (err, limit) {
 				if (err) return next(err);
 
