@@ -52,12 +52,14 @@ module.exports = {
 
 			//To handle the timeout scenarios
 			res.on('close', function () {
-				log.status = 'CLOSED';
-				log.res_status_code = res.statusCode.toString();
-				log.res_status_message = res.statusMessage
-				log.res_time = (new Date()) - req._startTime;
-				log.res_meta = (res.meta) ? res.meta : {};
-				req._sails.log.info(JSON.stringify(log));
+				if(res.statusCode === 408 || res.statusCode === 504 || ((new Date()) - req._startTime) >= 50000) {
+					log.status = 'CLOSED';
+					log.res_status_code = res.statusCode.toString();
+					log.res_status_message = res.statusMessage
+					log.res_time = (new Date()) - req._startTime;
+					log.res_meta = (res.meta) ? res.meta : {};
+					req._sails.log.info(JSON.stringify(log));
+				}
 			});
 		}
 		return next();
