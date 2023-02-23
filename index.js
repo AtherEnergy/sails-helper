@@ -133,7 +133,7 @@ module.exports = {
 				return next();
 
 			// req.ip gives you the true proxied ip. id is combination of ip and req path
-			var id = req.ip + '_' + req.path;
+			var id = req.ip + '_' + req.path.toLowerCase();
 			// 15 requests are allowed in 2 minute.
 			var limit = new ratelimiter({ id: id, db: redis_db, max: 15, duration: 120000 });
 			limit.get(function (err, limit) {
